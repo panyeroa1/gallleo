@@ -46,10 +46,19 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     roomLabels.push(`Bath ${i}`);
   }
 
-  let userPrompt = `Generate a standardized technical floor plan (Black Walls, White Floor).
-  Lot Dimensions: ${lotDims}.
-  House Footprint: ${houseDims}.
-  Positioning: ${setbacksInfo}
+  let userPrompt = `Generate a standardized technical floor plan.
+  
+  STRICT VISUAL STYLE REQUIREMENTS:
+  1. WALLS: Must be Solid BLACK with uniform thickness.
+  2. DOORS: Represent as thin line quarter-circle arcs indicating swing.
+  3. WINDOWS: Represent as thin double lines embedded in walls.
+  4. FLOOR: Pure WHITE background. DO NOT apply textures (no wood, tile patterns).
+  5. FURNITURE: DO NOT include movable furniture (beds, sofas). Show only fixed fixtures (toilets, sinks, counters).
+  
+  Dimensional Constraints:
+  - Lot Dimensions: ${lotDims}
+  - House Footprint: ${houseDims}
+  - Positioning: ${setbacksInfo}
   
   Interior Requirements:
   - Bedrooms/Rooms: ${project.roomsCount}
@@ -60,8 +69,6 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
   ANNOTATION TASK:
   You must include clear text labels inside the floor plan for these specific spaces: ${roomLabels.join(', ')}.
   Under each room name, write its approximate dimensions (e.g. "3.5x4m").
-
-  STYLE OVERRIDE: Strictly clean architectural line drawing (Black & White). No colors, no artistic shading, no floor textures.
   `;
 
   const parts: any[] = [];
