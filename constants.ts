@@ -4,6 +4,7 @@ export const API_KEY_ENV = process.env.API_KEY;
 // Models
 export const MODEL_BLUEPRINT = 'gemini-2.5-flash-image'; 
 export const MODEL_VIEWS = 'gemini-2.5-flash-image';
+export const MODEL_LIVE = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
 // Prompts
 export const BLUEPRINT_SYSTEM_PROMPT = `You are a technical architectural drafter.

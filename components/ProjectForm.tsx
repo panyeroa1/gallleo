@@ -1,14 +1,15 @@
-import React, { useState, ChangeEvent, useMemo, useEffect } from 'react';
+import React, { useState, ChangeEvent, useMemo, useEffect, useRef } from 'react';
 import { ProjectData, InputType } from '../types';
 
 interface Props {
   onSubmit: (data: ProjectData) => void;
+  onDataChange?: (data: Partial<ProjectData>) => void;
   isLoading: boolean;
   initialData?: ProjectData | null;
   existingBlueprint?: string;
 }
 
-const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData, existingBlueprint }) => {
+const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initialData, existingBlueprint }) => {
   // Defaults set to 18m x 24m as requested
   const [lotW, setLotW] = useState<number>(18);
   const [lotD, setLotD] = useState<number>(24);
@@ -40,10 +41,14 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData, existi
   const [promptText, setPromptText] = useState<string>('');
   const [imageBase64, setImageBase64] = useState<string | undefined>(undefined);
   const [errors, setErrors] = useState<string[]>([]);
+  
+  // Ref to prevent loop when updating from initialData vs user input
+  const isUpdatingFromParent = useRef(false);
 
-  // Load initial data if editing
+  // Load initial data if editing or updated by Voice Agent
   useEffect(() => {
     if (initialData) {
+      isUpdatingFromParent.current = true;
       setLotW(initialData.lotDimensions.widthMeters);
       setLotD(initialData.lotDimensions.depthMeters);
       setHouseW(initialData.houseDimensions.widthMeters);
@@ -57,8 +62,32 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData, existi
       setInputType(initialData.inputType);
       if (initialData.inputPromptText) setPromptText(initialData.inputPromptText);
       if (initialData.uploadedImageBase64) setImageBase64(initialData.uploadedImageBase64);
+      // Reset flag after a tick
+      setTimeout(() => { isUpdatingFromParent.current = false; }, 0);
     }
   }, [initialData]);
+
+  // Sync back to parent for Voice Agent Context
+  useEffect(() => {
+    if (onDataChange && !isUpdatingFromParent.current) {
+        onDataChange({
+            lotDimensions: { widthMeters: lotW, depthMeters: lotD },
+            houseDimensions: { widthMeters: houseW, depthMeters: houseD },
+            setbacks: {
+                front: setbackFront,
+                back: displaySetbackBack,
+                left: setbackLeft,
+                right: displaySetbackRight
+            },
+            roomsCount: rooms,
+            toiletsCount: toilets,
+            hasKitchen,
+            hasLivingRoom: hasLiving,
+            inputType,
+            inputPromptText: promptText
+        });
+    }
+  }, [lotW, lotD, houseW, houseD, setbackLeft, setbackFront, rooms, toilets, hasKitchen, hasLiving, inputType, promptText, onDataChange]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

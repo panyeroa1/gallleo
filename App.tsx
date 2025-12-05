@@ -3,12 +3,28 @@ import { AppStep, ProjectData, Blueprint, HouseViews } from './types';
 import ProjectForm from './components/ProjectForm';
 import BlueprintResult from './components/BlueprintResult';
 import ViewsGallery from './components/ViewsGallery';
+import ArcGalileoOrb from './components/ArcGalileoOrb';
 import { generateBlueprint, generateFiveViews } from './services/geminiService';
 import { APP_NAME } from './constants';
 
 const App: React.FC = () => {
   const [step, setStep] = useState<AppStep>(AppStep.PROJECT_DETAILS);
-  const [project, setProject] = useState<ProjectData | null>(null);
+  // Current "Draft" project state, used for Live Editing
+  const [project, setProject] = useState<ProjectData>({
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+      inputType: 'text_prompt',
+      lotDimensions: { widthMeters: 18, depthMeters: 24 },
+      houseDimensions: { widthMeters: 10, depthMeters: 12 },
+      setbacks: { front: 4, back: 8, left: 2, right: 6 }, // Defaults
+      roomsCount: 3,
+      toiletsCount: 2,
+      hasKitchen: true,
+      hasLivingRoom: true,
+      inputPromptText: '',
+      uploadedImageBase64: undefined
+  });
+  
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [views, setViews] = useState<HouseViews | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -16,13 +32,23 @@ const App: React.FC = () => {
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [extraInstructions, setExtraInstructions] = useState<string>('');
 
+  // Handler for form updates (manual or voice)
+  const handleDataChange = (updates: Partial<ProjectData>) => {
+      setProject(prev => {
+          // Merge logic to ensure nested objects don't get blown away if only partial
+          return { ...prev, ...updates };
+      });
+  };
+
   const handleProjectSubmit = async (data: ProjectData) => {
     setIsLoading(true);
     setLoadingProgress(0);
     setLoadingMessage('Initializing Eburon Engine... Generating Blueprint.');
+    // Update the master state one last time
+    setProject(data);
+    
     try {
       const result = await generateBlueprint(data);
-      setProject(data);
       setBlueprint(result);
       setStep(AppStep.BLUEPRINT_RESULT);
     } catch (error) {
@@ -75,7 +101,21 @@ const App: React.FC = () => {
 
   const handleReset = () => {
     setStep(AppStep.PROJECT_DETAILS);
-    setProject(null);
+    // Reset to defaults
+    setProject({
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+      inputType: 'text_prompt',
+      lotDimensions: { widthMeters: 18, depthMeters: 24 },
+      houseDimensions: { widthMeters: 10, depthMeters: 12 },
+      setbacks: { front: 4, back: 8, left: 2, right: 6 },
+      roomsCount: 3,
+      toiletsCount: 2,
+      hasKitchen: true,
+      hasLivingRoom: true,
+      inputPromptText: '',
+      uploadedImageBase64: undefined
+    });
     setBlueprint(null);
     setViews(null);
     setExtraInstructions('');
@@ -121,12 +161,13 @@ const App: React.FC = () => {
           <div className="animate-fade-in-up">
             <div className="text-center mb-10 max-w-2xl mx-auto">
               <h2 className="text-3xl font-bold mb-3 text-slate-900">
-                {project ? 'Edit Project Parameters' : 'Start New Project'}
+                {blueprint ? 'Edit Project Parameters' : 'Start New Project'}
               </h2>
               <p className="text-slate-600">Define dimensional constraints and style parameters. The system will generate a structural blueprint followed by photorealistic renderings.</p>
             </div>
             <ProjectForm 
               onSubmit={handleProjectSubmit} 
+              onDataChange={handleDataChange}
               isLoading={isLoading} 
               initialData={project}
               existingBlueprint={blueprint?.imageUrl}
@@ -172,6 +213,13 @@ const App: React.FC = () => {
             />
           </div>
         )}
+
+        {/* Arc Galileo Orb - Live Conversational Agent */}
+        <ArcGalileoOrb 
+            currentProjectState={project} 
+            onUpdateProject={handleDataChange} 
+            onTriggerGeneration={() => handleProjectSubmit(project)}
+        />
       </main>
 
       {/* Footer */}
