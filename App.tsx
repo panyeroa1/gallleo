@@ -38,10 +38,24 @@ const App: React.FC = () => {
     
     setIsLoading(true);
     setLoadingProgress(0);
-    setLoadingMessage('Analysing Blueprint structure... Rendering 5 perspectives concurrently.');
+    setLoadingMessage('Initializing Render Cluster...');
+    
     try {
       const result = await generateFiveViews(project, blueprint, extraInstructions, (progress) => {
         setLoadingProgress(progress);
+        
+        // Dynamic technical feedback based on progress percentage
+        if (progress <= 20) {
+            setLoadingMessage('Analyzing structural geometry & rendering Front Facade...');
+        } else if (progress <= 40) {
+            setLoadingMessage('Computing depth maps for Rear Elevation...');
+        } else if (progress <= 60) {
+            setLoadingMessage('Generating lateral Side Profiles (Left/Right)...');
+        } else if (progress <= 80) {
+            setLoadingMessage('Synthesizing Aerial Drone Perspective...');
+        } else {
+            setLoadingMessage('Finalizing high-resolution textures & lighting...');
+        }
       });
       setViews(result);
       setStep(AppStep.VIEWS_GENERATION);
@@ -90,18 +104,16 @@ const App: React.FC = () => {
             {/* Spinner */}
             <div className="w-16 h-16 border-4 border-blueprint-500 border-t-transparent rounded-full animate-spin mb-6"></div>
             
-            <p className="text-lg font-mono animate-pulse mb-4">{loadingMessage}</p>
+            <p className="text-lg font-mono animate-pulse mb-4 tracking-wide">{loadingMessage}</p>
             
             {/* Progress Bar */}
-            {loadingProgress > 0 && (
-              <div className="w-64 h-2 bg-slate-700 rounded-full overflow-hidden relative">
+            <div className="w-80 h-3 bg-slate-800 rounded-full overflow-hidden relative border border-slate-700 shadow-inner">
                  <div 
-                   className="h-full bg-blueprint-500 transition-all duration-300 ease-out"
+                   className="h-full bg-blueprint-500 shadow-[0_0_10px_rgba(37,99,235,0.7)] transition-all duration-300 ease-out"
                    style={{ width: `${loadingProgress}%` }}
                  ></div>
-              </div>
-            )}
-            {loadingProgress > 0 && <p className="text-xs font-mono text-slate-400 mt-2">{loadingProgress}% COMPLETE</p>}
+            </div>
+            <p className="text-xs font-mono text-blueprint-300 mt-2">{loadingProgress}% COMPLETE</p>
           </div>
         )}
 
@@ -116,7 +128,8 @@ const App: React.FC = () => {
             <ProjectForm 
               onSubmit={handleProjectSubmit} 
               isLoading={isLoading} 
-              initialData={project} 
+              initialData={project}
+              existingBlueprint={blueprint?.imageUrl}
             />
           </div>
         )}

@@ -5,9 +5,10 @@ interface Props {
   onSubmit: (data: ProjectData) => void;
   isLoading: boolean;
   initialData?: ProjectData | null;
+  existingBlueprint?: string;
 }
 
-const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData }) => {
+const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData, existingBlueprint }) => {
   // Defaults set to 18m x 24m as requested
   const [lotW, setLotW] = useState<number>(18);
   const [lotD, setLotD] = useState<number>(24);
@@ -292,22 +293,39 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData }) => {
                    <text x={lotX + lotW/2} y={lotY - 0.5} fill="#94a3b8" fontSize="1" textAnchor="middle" className="font-mono">LOT WIDTH {lotW}m</text>
                    <text x={lotX - 0.5} y={lotY + lotD/2} fill="#94a3b8" fontSize="1" textAnchor="middle" transform={`rotate(-90, ${lotX - 0.5}, ${lotY + lotD/2})`} className="font-mono">LOT DEPTH {lotD}m</text>
 
-                   {/* House Footprint - Use CLAMPED positions for visual sanity, but warn */}
+                   {/* House Footprint */}
                    <rect 
                      x={houseXPos} 
                      y={houseYPos} 
                      width={houseW} 
                      height={houseD} 
-                     fill={isRightInvalid || isBackInvalid ? '#ef4444' : '#3b82f6'} 
+                     fill={existingBlueprint ? "white" : (isRightInvalid || isBackInvalid ? '#ef4444' : '#3b82f6')}
                      stroke="white" 
                      strokeWidth="0.4"
                      className="drop-shadow-lg"
                      opacity={isRightInvalid || isBackInvalid ? 0.5 : 1}
                    />
+
+                   {/* Generated Blueprint Overlay */}
+                   {existingBlueprint && !isRightInvalid && !isBackInvalid && (
+                     <image 
+                        href={existingBlueprint} 
+                        x={houseXPos} 
+                        y={houseYPos} 
+                        width={houseW} 
+                        height={houseD}
+                        preserveAspectRatio="none"
+                        opacity="0.9"
+                     />
+                   )}
                    
-                   {/* House Center Label */}
-                   <text x={houseXPos + houseW/2} y={houseYPos + houseD/2} fill="white" fontSize="1.2" textAnchor="middle" className="font-bold font-mono">HOUSE</text>
-                   <text x={houseXPos + houseW/2} y={houseYPos + houseD/2 + 1.5} fill="rgba(255,255,255,0.8)" fontSize="0.8" textAnchor="middle" className="font-mono">{houseW}m x {houseD}m</text>
+                   {/* House Center Label - only show if no blueprint, or if blueprint is opaque/hard to read */}
+                   {!existingBlueprint && (
+                     <>
+                        <text x={houseXPos + houseW/2} y={houseYPos + houseD/2} fill="white" fontSize="1.2" textAnchor="middle" className="font-bold font-mono">HOUSE</text>
+                        <text x={houseXPos + houseW/2} y={houseYPos + houseD/2 + 1.5} fill="rgba(255,255,255,0.8)" fontSize="0.8" textAnchor="middle" className="font-mono">{houseW}m x {houseD}m</text>
+                     </>
+                   )}
 
                    {/* Setback Arrows & Labels */}
                    
@@ -342,7 +360,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, isLoading, initialData }) => {
            
            <div className="mt-4 flex space-x-6 text-xs font-mono text-slate-400">
               <span className="flex items-center"><div className="w-3 h-3 border border-slate-500 bg-slate-900 mr-2"></div> Lot</span>
-              <span className="flex items-center"><div className="w-3 h-3 bg-blue-500 border border-white mr-2"></div> House</span>
+              <span className="flex items-center"><div className={`w-3 h-3 ${existingBlueprint ? 'bg-white' : 'bg-blue-500'} border border-white mr-2`}></div> House</span>
               <span className="flex items-center"><div className="w-3 h-0.5 bg-yellow-500 mr-2"></div> Setbacks</span>
            </div>
         </div>
