@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, useMemo, useEffect, useRef } from 'react';
-import { ProjectData, InputType } from '../types';
+import { ProjectData, InputType, RoofType } from '../types';
 
 interface Props {
   onSubmit: (data: ProjectData) => void;
@@ -37,6 +37,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   const [toilets, setToilets] = useState<number>(2);
   const [hasKitchen, setHasKitchen] = useState<boolean>(true);
   const [hasLiving, setHasLiving] = useState<boolean>(true);
+  const [roofType, setRoofType] = useState<RoofType>('Flat');
   const [inputType, setInputType] = useState<InputType>('text_prompt');
   const [promptText, setPromptText] = useState<string>('');
   const [imageBase64, setImageBase64] = useState<string | undefined>(undefined);
@@ -59,6 +60,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
       setToilets(initialData.toiletsCount);
       setHasKitchen(initialData.hasKitchen);
       setHasLiving(initialData.hasLivingRoom);
+      setRoofType(initialData.roofType);
       setInputType(initialData.inputType);
       if (initialData.inputPromptText) setPromptText(initialData.inputPromptText);
       if (initialData.uploadedImageBase64) setImageBase64(initialData.uploadedImageBase64);
@@ -83,11 +85,12 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
             toiletsCount: toilets,
             hasKitchen,
             hasLivingRoom: hasLiving,
+            roofType,
             inputType,
             inputPromptText: promptText
         });
     }
-  }, [lotW, lotD, houseW, houseD, setbackLeft, setbackFront, rooms, toilets, hasKitchen, hasLiving, inputType, promptText, onDataChange]);
+  }, [lotW, lotD, houseW, houseD, setbackLeft, setbackFront, rooms, toilets, hasKitchen, hasLiving, roofType, inputType, promptText, onDataChange]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,6 +143,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
       toiletsCount: toilets,
       hasKitchen,
       hasLivingRoom: hasLiving,
+      roofType,
       inputPromptText: promptText,
       uploadedImageBase64: imageBase64,
     };
@@ -163,6 +167,8 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   // y = padding + (LotDepth - SetbackFront - HouseDepth) -> If Front is bottom
   const houseXPos = padding + setbackLeft;
   const houseYPos = padding + (lotD - setbackFront - houseD);
+
+  const roofTypes: RoofType[] = ['Flat', 'Gabled', 'Hip', 'Shed'];
 
   return (
     <div className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-lg border border-slate-200">
@@ -410,14 +416,32 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
               <label className="block text-xs font-bold mb-1">Toilets *</label>
               <input type="number" min={0} value={toilets} onChange={e => setToilets(parseInt(e.target.value))} className="w-full p-2 border border-slate-300 rounded text-slate-900 bg-white" />
             </div>
-            <div className="flex items-center space-x-2 pt-6">
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="flex items-center space-x-2">
               <input type="checkbox" checked={hasKitchen} onChange={e => setHasKitchen(e.target.checked)} className="h-4 w-4 text-blueprint-500" />
               <label className="text-sm">Kitchen</label>
             </div>
-            <div className="flex items-center space-x-2 pt-6">
+            <div className="flex items-center space-x-2">
               <input type="checkbox" checked={hasLiving} onChange={e => setHasLiving(e.target.checked)} className="h-4 w-4 text-blueprint-500" />
               <label className="text-sm">Living Room</label>
             </div>
+          </div>
+          
+          {/* Roof Style Selector */}
+          <div className="mt-6">
+             <label className="block text-xs font-bold mb-2 uppercase text-slate-500">Roof Architecture</label>
+             <div className="flex flex-wrap gap-2">
+                {roofTypes.map(type => (
+                    <button
+                       key={type}
+                       onClick={() => setRoofType(type)}
+                       className={`px-3 py-2 text-sm rounded border transition-colors ${roofType === type ? 'bg-blueprint-500 text-white border-blueprint-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                    >
+                       {type}
+                    </button>
+                ))}
+             </div>
           </div>
         </div>
 

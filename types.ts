@@ -1,5 +1,7 @@
 export type InputType = 'image_upload' | 'text_prompt';
 
+export type RoofType = 'Flat' | 'Gabled' | 'Hip' | 'Shed';
+
 export interface Dimensions {
   widthMeters: number;
   depthMeters: number;
@@ -23,6 +25,7 @@ export interface ProjectData {
   toiletsCount: number;
   hasKitchen: boolean;
   hasLivingRoom: boolean;
+  roofType: RoofType;
   inputPromptText?: string;
   uploadedImageBase64?: string; // Storing as base64 for this client-side demo
 }

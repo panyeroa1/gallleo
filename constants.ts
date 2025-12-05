@@ -2,10 +2,6 @@ export const APP_NAME = "EBURON ARCHITECT";
 
 // Environment Variable Handling for Vite compatibility
 // We rely on process.env which is polyfilled in vite.config.ts
-// API Key is accessed directly via process.env.API_KEY in services to comply with strict guidelines.
-
-// Supabase Configuration
-// Defaults provided by Eburon Authority
 export const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "https://mkmyfdqrejabgnymfmbb.supabase.co";
 export const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rbXlmZHFyZWphYmdueW1mbWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0MzMxMzYsImV4cCI6MjA4MDAwOTEzNn0.x_1VnQ-HWWPwNe9jjafhD_uoH2dyCyjO2RaKOQhYoJw";
 
@@ -13,33 +9,55 @@ export const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.e
 export const MODEL_BLUEPRINT = 'gemini-2.5-flash-image'; 
 export const MODEL_VIEWS = 'gemini-2.5-flash-image';
 export const MODEL_LIVE = 'gemini-2.5-flash-native-audio-preview-09-2025';
+export const MODEL_TEXT = 'gemini-2.5-flash';
 
 // Prompts
-export const BLUEPRINT_SYSTEM_PROMPT = `You are a technical architectural drafter.
-Task: Generate a professional 2D floor plan blueprint.
 
-VISUAL STYLE GUIDE (STRICT COMPLIANCE REQUIRED):
-1. WALLS: Solid BLACK fill. Uniform thickness (approx 20-30cm). High contrast.
-2. BACKGROUND: Pure WHITE (#FFFFFF).
-3. DOORS: Thin line quarter-circle arcs showing swing direction.
-4. WINDOWS: Thin double lines embedded in walls.
-5. FLOOR: Pure WHITE. NO textures (no wood grain, tiles, or carpet).
-6. FIXTURES: Show fixed elements (toilets, sinks, counters) in thin black lines.
-7. FURNITURE: DO NOT show movable furniture (beds, sofas, tables) to ensure blueprint clarity.
-8. PERSPECTIVE: Strictly 2D Top-Down. NO shadows, NO 3D depth.
+// 1. PROMPT ENHANCER (The "Brain")
+export const PROMPT_ENHANCER_SYSTEM_PROMPT = `You are a Senior Architectural Design Consultant referencing the "The House Designers" database.
+Your task is to ENHANCE the user's rough input into a professional design brief.
 
-ANNOTATIONS (MANDATORY):
-- Label every room (e.g. LIVING, BEDROOM 1, KITCHEN).
-- Add approximate dimensions below labels (e.g. 4.0x3.5m).
-- Text must be uppercase, black, sans-serif, and horizontal.
+KNOWLEDGE BASE STRATEGY:
+- Draw upon popular architectural trends found in "The House Designers" collection.
+- If the user specifies "Modern", automatically imply: Clean lines, mixed materials (wood/stucco), open floor plans.
+- If "Farmhouse", imply: Board-and-batten, gabled roofs, wrap-around porches.
+- Vocabulary: Use terms like "split-bedroom layout", "lanai", "foyer", "mudroom", "volume ceilings".
 
-LAYOUT:
-- Respect the provided House Footprint dimensions exactly.
-- Ensure logical connectivity between rooms (e.g. Kitchen near Dining).
-- Do not include surrounding landscaping unless it represents the specific lot boundary.`;
+OUTPUT REQUIREMENT:
+Output a concise but highly descriptive architectural brief. Do not use conversational filler. Focus on Materials, Flow, and Facade detailing.`;
 
+// 2. 3D BLUEPRINT RENDERER (The "Visualizer")
+export const BLUEPRINT_SYSTEM_PROMPT = `You are an expert Architectural Visualization Renderer.
+Task: Generate a 3D ISOMETRIC CUTAWAY FLOOR PLAN.
+
+VISUAL STYLE REFERENCE (Strict Adherence):
+- Perspective: Top-down Isometric (approx 45-60 degree angle).
+- Style: "Dollhouse" cutaway view.
+- Walls: 3D extruded walls cut at 1.2m height. Cut surface must be Solid Black or Dark Grey.
+- Flooring: High-quality textures. Light Oak Wood for living areas. Large format slate/concrete tiles for wet areas.
+- Furniture: Fully furnished with modern 3D assets (sofas, beds with linens, dining sets, rugs).
+- Lighting: Soft, ambient global illumination with contact shadows (Ambient Occlusion).
+- Background: Pure White (#FFFFFF). Clean edge.
+
+Prohibited:
+- NO 2D CAD lines.
+- NO Blueprints with grids.
+- NO Text annotations overlaying the art (unless strictly room labels on floor).
+
+The result must look like a high-end marketing asset from a luxury real estate brochure.`;
+
+// 3. EXTERIOR VIEWS RENDERER
 export const VIEWS_SYSTEM_PROMPT = `You are an architectural visualization renderer.
-Your task is to generate a photorealistic exterior view of a house based on a provided floor plan blueprint.
-Style: Modern, clean, realistic lighting. 
-Respect the structural footprint shown in the blueprint.
-Maintain consistency in materials (e.g., concrete, wood, glass) across different viewing angles.`;
+Task: Generate photorealistic exterior views.
+
+VISUAL STYLE GUIDE:
+If the project is "Modern" or "Flat Roof", strictly follow this aesthetic:
+- Facade: Smooth White Stucco or Concrete finish.
+- Accents: Warm horizontal wood slat siding (Cedar/Teak) on feature walls or entryways.
+- Windows: Large floor-to-ceiling windows with thin black aluminum frames.
+- Roof: Flat roof with thin fascia line.
+- Entry: deeply recessed or covered entry with wood ceiling/soffit.
+- Landscaping: Minimalist. Spherical lighting fixtures (orb lights) on ground. Linear planters with manicured shrubs.
+
+If the project is another style (e.g., Traditional), render accordingly but maintain photorealism.
+Lighting: Golden Hour or Soft Overcast. Professional Architectural Photography.`;

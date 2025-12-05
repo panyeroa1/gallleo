@@ -13,7 +13,7 @@ interface Props {
 // Tool Definition for updating specs
 const updateBuildingSpecsTool: FunctionDeclaration = {
   name: "updateBuildingSpecs",
-  description: "Updates the architectural specifications of the house project. Use this when the user wants to change dimensions, room counts, or setbacks.",
+  description: "Updates the architectural specifications of the house project. Use this when the user wants to change dimensions, room counts, setbacks, or roof style.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -26,7 +26,12 @@ const updateBuildingSpecsTool: FunctionDeclaration = {
        hasKitchen: { type: Type.BOOLEAN },
        hasLivingRoom: { type: Type.BOOLEAN },
        setbackFront: { type: Type.NUMBER },
-       setbackLeft: { type: Type.NUMBER }
+       setbackLeft: { type: Type.NUMBER },
+       roofType: { 
+           type: Type.STRING, 
+           enum: ['Flat', 'Gabled', 'Hip', 'Shed'],
+           description: "The architectural style of the roof." 
+       }
     }
   }
 };
@@ -90,7 +95,7 @@ const ArcGalileoOrb: React.FC<Props> = ({ currentProjectState, onUpdateProject, 
                 You speak fluent Taglish (Tagalog-English mix) in a natural, friendly, and professional tone.
                 Example: "Sige, gawin nating 15 meters ang lapad." or "Ready na ba ang blueprint mo?"
                 Your goal is to help the user design their floorplan.
-                You have tools to update the dimensions and trigger the blueprint generation.
+                You have tools to update the dimensions, roof style, and trigger the blueprint generation.
                 When you update parameters, confirm the action verbally.
                 CURRENT STATE: ${JSON.stringify(currentProjectRef.current)}`,
                 tools: [
@@ -140,6 +145,7 @@ const ArcGalileoOrb: React.FC<Props> = ({ currentProjectState, onUpdateProject, 
                                 if (fc.args.hasLivingRoom !== undefined) updates.hasLivingRoom = fc.args.hasLivingRoom;
                                 if (fc.args.setbackFront !== undefined) updates.setbacks = { ...currentProjectRef.current.setbacks, front: fc.args.setbackFront };
                                 if (fc.args.setbackLeft !== undefined) updates.setbacks = { ...currentProjectRef.current.setbacks, ...updates.setbacks, left: fc.args.setbackLeft };
+                                if (fc.args.roofType) updates.roofType = fc.args.roofType;
 
                                 onUpdateProject(updates);
                                 

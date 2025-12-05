@@ -1,6 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { ProjectData, Blueprint, HouseViews } from "../types";
-import { MODEL_BLUEPRINT, MODEL_VIEWS, BLUEPRINT_SYSTEM_PROMPT, VIEWS_SYSTEM_PROMPT } from "../constants";
+import { 
+  MODEL_BLUEPRINT, 
+  MODEL_VIEWS, 
+  MODEL_TEXT,
+  BLUEPRINT_SYSTEM_PROMPT, 
+  PROMPT_ENHANCER_SYSTEM_PROMPT,
+  VIEWS_SYSTEM_PROMPT 
+} from "../constants";
 
 // Helper to remove data URL prefix for the API
 const extractBase64 = (dataUrl: string): string => {
@@ -14,11 +21,64 @@ const getClient = () => {
 };
 
 /**
+ * Enhances the user's simple prompt using the "Knowledge Base" persona.
+ */
+const enhanceUserPrompt = async (project: ProjectData): Promise<string> => {
+    const ai = getClient();
+    
+    // Construct a base description from form data
+    const structuralBase = `
+    Lot: ${project.lotDimensions.widthMeters}x${project.lotDimensions.depthMeters}m.
+    House: ${project.houseDimensions.widthMeters}x${project.houseDimensions.depthMeters}m.
+    Roof Style: ${project.roofType}.
+    Rooms: ${project.roomsCount} bedrooms, ${project.toiletsCount} baths.
+    Features: ${project.hasKitchen ? 'Kitchen' : ''}, ${project.hasLivingRoom ? 'Living Room' : ''}.
+    `;
+
+    const userInput = project.inputType === 'text_prompt' ? project.inputPromptText : "Analyze the uploaded image style.";
+    
+    const prompt = `User Input: "${userInput}"
+    Structural Constraints: ${structuralBase}
+    
+    ACTION:
+    Search your internal "The House Designers" knowledge base for similar layouts and styles.
+    Expand the user's input into a detailed visual description for a 3D Renderer.
+    Include specific details on:
+    1. Flooring materials (e.g. "wide-plank european oak").
+    2. Wall textures.
+    3. Furniture style (e.g. "mid-century modern").
+    4. Key features (e.g. "waterfall island", "floating vanity").`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: MODEL_TEXT,
+            contents: { parts: [{ text: prompt }] },
+            config: {
+                systemInstruction: PROMPT_ENHANCER_SYSTEM_PROMPT
+            }
+        });
+        
+        return response.text || userInput || "Modern residential home";
+    } catch (e) {
+        console.warn("Prompt enhancement failed, using raw input.", e);
+        return userInput || "Modern residential home";
+    }
+};
+
+/**
  * Generates the initial aerial blueprint based on user inputs.
  */
-export const generateBlueprint = async (project: ProjectData): Promise<Blueprint> => {
+export const generateBlueprint = async (project: ProjectData, onStatusUpdate?: (msg: string) => void): Promise<Blueprint> => {
   const ai = getClient();
   
+  // STEP 1: ENHANCE PROMPT
+  if (onStatusUpdate) onStatusUpdate("Consulting 'The House Designers' Knowledge Base...");
+  const enhancedDescription = await enhanceUserPrompt(project);
+  console.log("Enhanced Prompt:", enhancedDescription);
+
+  // STEP 2: PREPARE IMAGE GENERATION
+  if (onStatusUpdate) onStatusUpdate("Rendering 3D Isometric Cutaway...");
+
   const houseDims = `${project.houseDimensions.widthMeters}m x ${project.houseDimensions.depthMeters}m`;
   const lotDims = `${project.lotDimensions.widthMeters}m x ${project.lotDimensions.depthMeters}m`;
   
@@ -31,11 +91,10 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     - Right: ${project.setbacks.right}m
   `;
 
-  // Build list of specific rooms for labeling
+  // Build list of specific rooms for labeling (though 3D text is harder, we ask for it)
   const roomLabels: string[] = [];
   if (project.hasLivingRoom) roomLabels.push("Living Room");
   if (project.hasKitchen) roomLabels.push("Kitchen");
-  // Assuming roomsCount refers to bedrooms or generic rooms
   for (let i = 1; i <= project.roomsCount; i++) {
     roomLabels.push(`Bedroom ${i}`);
   }
@@ -43,53 +102,38 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     roomLabels.push(`Bath ${i}`);
   }
 
-  let userPrompt = `Generate a standardized technical floor plan.
+  let userPrompt = `Generate a High-Fidelity 3D Isometric Cutaway Floor Plan.
   
-  STRICT VISUAL STYLE REQUIREMENTS:
-  1. WALLS: Must be Solid BLACK with uniform thickness.
-  2. DOORS: Represent as thin line quarter-circle arcs indicating swing.
-  3. WINDOWS: Represent as thin double lines embedded in walls.
-  4. FLOOR: Pure WHITE background. DO NOT apply textures (no wood, tile patterns).
-  5. FURNITURE: DO NOT include movable furniture (beds, sofas). Show only fixed fixtures (toilets, sinks, counters).
+  ENHANCED DESIGN BRIEF:
+  ${enhancedDescription}
   
-  Dimensional Constraints:
-  - Lot Dimensions: ${lotDims}
+  DIMENSIONS:
+  - Lot: ${lotDims}
   - House Footprint: ${houseDims}
-  - Positioning: ${setbacksInfo}
+  - Setbacks: ${setbacksInfo}
   
-  Interior Requirements:
-  - Bedrooms/Rooms: ${project.roomsCount}
-  - Bathrooms: ${project.toiletsCount}
-  - Kitchen: ${project.hasKitchen ? 'Included' : 'None'}
-  - Living Room: ${project.hasLivingRoom ? 'Included' : 'None'}
-  
-  ANNOTATION TASK:
-  You must include clear text labels inside the floor plan for these specific spaces: ${roomLabels.join(', ')}.
-  Under each room name, write its approximate dimensions (e.g. "3.5x4m").
+  REQUIRED ELEMENTS:
+  - 3D Extruded Walls (Cut height approx 1.2m, Black Fill).
+  - Realistic Flooring (Wood/Tile).
+  - Fully Furnished: ${roomLabels.join(', ')}.
+  - Ambient Occlusion Shadows.
+  - White Background.
   `;
 
   const parts: any[] = [];
 
-  // Handle Input Type
-  if (project.inputType === 'text_prompt' && project.inputPromptText) {
-    userPrompt += `\nDesign Context (Use for layout logic, but ignore artistic rendering style): ${project.inputPromptText}`;
-    parts.push({ text: userPrompt });
-  } else if (project.inputType === 'image_upload' && project.uploadedImageBase64) {
-    // Explicit Instruction for Intelligent Analysis
-    userPrompt += `\nTASK: ANALYZE the attached reference image's architectural flow, room connectivity, and style. 
-    THEN, GENERATE a new blueprint that adapts that specific style and flow to the strict dimensions provided (${houseDims}).
-    The output must be a clean black-and-white technical drawing, even if the input is colored or 3D.`;
-    
+  // Handle Input Type for Image Generation context
+  if (project.inputType === 'image_upload' && project.uploadedImageBase64) {
+    userPrompt += `\nVISUAL REFERENCE: Mimic the layout flow and style of the attached image, but map it to the requested dimensions.`;
     parts.push({
       inlineData: {
-        mimeType: 'image/jpeg', // Assuming converted to JPEG/PNG in frontend
+        mimeType: 'image/jpeg', 
         data: extractBase64(project.uploadedImageBase64)
       }
     });
-    parts.push({ text: userPrompt });
-  } else {
-    parts.push({ text: userPrompt });
   }
+  
+  parts.push({ text: userPrompt });
 
   try {
     const response = await ai.models.generateContent({
@@ -97,16 +141,11 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
       contents: { parts },
       config: {
         systemInstruction: BLUEPRINT_SYSTEM_PROMPT,
-        // Using standard generation config
       }
     });
 
     // Extract image
-    // Note: The response structure for images in the new SDK often requires iterating parts
-    // We expect the model to return an image in the response parts.
     let generatedImageBase64 = '';
-    
-    // Check parts for inline data (image)
     const candidates = response.candidates;
     if (candidates && candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
       for (const part of candidates[0].content.parts) {
@@ -118,8 +157,6 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     }
 
     if (!generatedImageBase64) {
-       // Fallback for debugging: if text is returned instead of image, throw
-       // Usually means the model refused or generated text.
        const text = response.text || "No content generated";
        throw new Error(`Model returned text instead of image: ${text}`);
     }
@@ -130,7 +167,7 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
       imageUrl: `data:image/png;base64,${generatedImageBase64}`,
       metadata: {
         model: MODEL_BLUEPRINT,
-        promptUsed: userPrompt
+        promptUsed: enhancedDescription // Store the enhanced version
       }
     };
   } catch (error) {
@@ -141,7 +178,6 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
 
 /**
  * Generates 5 distinct views based on the blueprint.
- * In a real backend, we might batch this. Here we parallelize client requests.
  */
 export const generateFiveViews = async (
   project: ProjectData,
@@ -157,10 +193,14 @@ export const generateFiveViews = async (
   const total = angles.length;
   let completed = 0;
   
+  // We use the enhanced prompt context from the blueprint metadata if available, otherwise prompt
+  const styleContext = blueprint.metadata.promptUsed || project.inputPromptText || "Modern";
+
   const baseInstruction = `
-    Reference the attached floor plan blueprint accurately.
+    Reference the attached 3D floor plan accurately.
     House Size: ${project.houseDimensions.widthMeters}m width x ${project.houseDimensions.depthMeters}m depth.
-    Style: ${project.inputType === 'text_prompt' ? project.inputPromptText : 'Modern Residential'}.
+    Roof Style: ${project.roofType}.
+    Design Style: ${styleContext}
     ${extraInstructions ? `Additional Instructions: ${extraInstructions}` : ''}
   `;
 

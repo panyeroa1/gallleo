@@ -22,6 +22,7 @@ const App: React.FC = () => {
       toiletsCount: 2,
       hasKitchen: true,
       hasLivingRoom: true,
+      roofType: 'Flat',
       inputPromptText: '',
       uploadedImageBase64: undefined
   });
@@ -44,12 +45,15 @@ const App: React.FC = () => {
   const handleProjectSubmit = async (data: ProjectData) => {
     setIsLoading(true);
     setLoadingProgress(0);
-    setLoadingMessage('Initializing Eburon Engine... Generating Blueprint.');
+    setLoadingMessage('Initializing Eburon Engine...');
     // Update the master state one last time
     setProject(data);
     
     try {
-      const result = await generateBlueprint(data);
+      // Pass a status callback to update the UI during the enhancement phase
+      const result = await generateBlueprint(data, (msg) => {
+          setLoadingMessage(msg);
+      });
       setBlueprint(result);
       setStep(AppStep.BLUEPRINT_RESULT);
       
@@ -122,6 +126,7 @@ const App: React.FC = () => {
       toiletsCount: 2,
       hasKitchen: true,
       hasLivingRoom: true,
+      roofType: 'Flat',
       inputPromptText: '',
       uploadedImageBase64: undefined
     });
@@ -162,7 +167,7 @@ const App: React.FC = () => {
                    style={{ width: `${loadingProgress}%` }}
                  ></div>
             </div>
-            <p className="text-xs font-mono text-blueprint-300 mt-2">{loadingProgress}% COMPLETE</p>
+            {loadingProgress > 0 && <p className="text-xs font-mono text-blueprint-300 mt-2">{loadingProgress}% COMPLETE</p>}
           </div>
         )}
 
