@@ -1,0 +1,5 @@
+{
+  "name": "Eburon Architect",
+  "description": "A precision-engineered architectural visualization tool. Generates aerial blueprints and multi-view perspectives from dimensional data and text/image inputs using Gemini models.",
+  "requestFramePermissions": []
+}
