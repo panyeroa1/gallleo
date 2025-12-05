@@ -46,7 +46,7 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     roomLabels.push(`Bath ${i}`);
   }
 
-  let userPrompt = `Generate a 2D floor plan blueprint.
+  let userPrompt = `Generate a standardized technical floor plan (Black Walls, White Floor).
   Lot Dimensions: ${lotDims}.
   House Footprint: ${houseDims}.
   Positioning: ${setbacksInfo}
@@ -60,19 +60,21 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
   ANNOTATION TASK:
   You must include clear text labels inside the floor plan for these specific spaces: ${roomLabels.join(', ')}.
   Under each room name, write its approximate dimensions (e.g. "3.5x4m").
+
+  STYLE OVERRIDE: Strictly clean architectural line drawing (Black & White). No colors, no artistic shading, no floor textures.
   `;
 
   const parts: any[] = [];
 
   // Handle Input Type
   if (project.inputType === 'text_prompt' && project.inputPromptText) {
-    userPrompt += `\nDesign Style/Description: ${project.inputPromptText}`;
+    userPrompt += `\nDesign Context (Use for layout logic, but ignore artistic rendering style): ${project.inputPromptText}`;
     parts.push({ text: userPrompt });
   } else if (project.inputType === 'image_upload' && project.uploadedImageBase64) {
     // Explicit Instruction for Intelligent Analysis
     userPrompt += `\nTASK: ANALYZE the attached reference image's architectural flow, room connectivity, and style. 
     THEN, GENERATE a new blueprint that adapts that specific style and flow to the strict dimensions provided (${houseDims}).
-    The output must preserve the essence of the input image but resize it to fit the lot.`;
+    The output must be a clean black-and-white technical drawing, even if the input is colored or 3D.`;
     
     parts.push({
       inlineData: {
