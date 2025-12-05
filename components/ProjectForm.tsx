@@ -14,12 +14,12 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   const [lotW, setLotW] = useState<number>(18);
   const [lotD, setLotD] = useState<number>(24);
   
-  const [houseW, setHouseW] = useState<number>(10);
-  const [houseD, setHouseD] = useState<number>(12);
+  const [houseW, setHouseW] = useState<number>(12);
+  const [houseD, setHouseD] = useState<number>(14);
   
   // Setbacks - Primary Inputs (Left and Front)
   const [setbackLeft, setSetbackLeft] = useState<number>(2);
-  const [setbackFront, setSetbackFront] = useState<number>(4);
+  const [setbackFront, setSetbackFront] = useState<number>(7);
 
   // Derived Setbacks (Right and Back) - Raw calculation for validation
   const rawSetbackRight = lotW - houseW - setbackLeft;

@@ -16,8 +16,8 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       inputType: 'text_prompt',
       lotDimensions: { widthMeters: 18, depthMeters: 24 },
-      houseDimensions: { widthMeters: 10, depthMeters: 12 },
-      setbacks: { front: 4, back: 8, left: 2, right: 6 }, // Defaults
+      houseDimensions: { widthMeters: 12, depthMeters: 14 },
+      setbacks: { front: 7, back: 3, left: 2, right: 4 }, // Defaults: Right=4, Back=3 based on dimensions
       roomsCount: 3,
       toiletsCount: 2,
       hasKitchen: true,
@@ -120,8 +120,8 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       inputType: 'text_prompt',
       lotDimensions: { widthMeters: 18, depthMeters: 24 },
-      houseDimensions: { widthMeters: 10, depthMeters: 12 },
-      setbacks: { front: 4, back: 8, left: 2, right: 6 },
+      houseDimensions: { widthMeters: 12, depthMeters: 14 },
+      setbacks: { front: 7, back: 3, left: 2, right: 4 },
       roomsCount: 3,
       toiletsCount: 2,
       hasKitchen: true,
