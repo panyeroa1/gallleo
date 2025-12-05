@@ -34,12 +34,32 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     - Right: ${project.setbacks.right}m
   `;
 
+  // Build list of specific rooms for labeling
+  const roomLabels: string[] = [];
+  if (project.hasLivingRoom) roomLabels.push("Living Room");
+  if (project.hasKitchen) roomLabels.push("Kitchen");
+  // Assuming roomsCount refers to bedrooms or generic rooms
+  for (let i = 1; i <= project.roomsCount; i++) {
+    roomLabels.push(`Bedroom ${i}`);
+  }
+  for (let i = 1; i <= project.toiletsCount; i++) {
+    roomLabels.push(`Bath ${i}`);
+  }
+
   let userPrompt = `Generate a 2D floor plan blueprint.
   Lot Dimensions: ${lotDims}.
   House Footprint: ${houseDims}.
   Positioning: ${setbacksInfo}
-  Rooms: ${project.roomsCount}. Toilets: ${project.toiletsCount}.
-  Kitchen: ${project.hasKitchen ? 'Yes' : 'No'}. Living Room: ${project.hasLivingRoom ? 'Yes' : 'No'}.
+  
+  Interior Requirements:
+  - Bedrooms/Rooms: ${project.roomsCount}
+  - Bathrooms: ${project.toiletsCount}
+  - Kitchen: ${project.hasKitchen ? 'Included' : 'None'}
+  - Living Room: ${project.hasLivingRoom ? 'Included' : 'None'}
+  
+  ANNOTATION TASK:
+  You must include clear text labels inside the floor plan for these specific spaces: ${roomLabels.join(', ')}.
+  Under each room name, write its approximate dimensions (e.g. "3.5x4m").
   `;
 
   const parts: any[] = [];

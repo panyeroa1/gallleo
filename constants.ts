@@ -12,7 +12,7 @@ Style Reference: "Live Home 3D" style.
 - Background: Pure White (#FFFFFF).
 - Walls: Distinct, thick dark blue or black lines with solid fill.
 - Elements: Clearly indicate doors (arcs), windows (thin lines).
-- ANNOTATIONS (MANDATORY): You MUST include dimension lines for outer walls. Inside rooms, include text labels with approximate sizes (e.g., "3x4m" or "12sqm").
+- ANNOTATIONS (MANDATORY): You MUST include dimension lines for outer walls. Inside rooms, include CLEAR TEXT LABELS for the room name (e.g., "Kitchen", "Bedroom") AND approximate sizes (e.g., "3x4m" or "12sqm").
 - Perspective: Strictly top-down 2D. No angled/isometric views.
 - Contrast: High. 
 - Content: The layout must strictly fit the aspect ratio and shape defined by the dimensions.
