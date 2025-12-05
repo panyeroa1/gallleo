@@ -49,7 +49,11 @@ export const generateBlueprint = async (project: ProjectData): Promise<Blueprint
     userPrompt += `\nDesign Style/Description: ${project.inputPromptText}`;
     parts.push({ text: userPrompt });
   } else if (project.inputType === 'image_upload' && project.uploadedImageBase64) {
-    userPrompt += `\nUse the attached image as a style reference and general layout guide, but strictly adapt it to the dimensions provided.`;
+    // Explicit Instruction for Intelligent Analysis
+    userPrompt += `\nTASK: ANALYZE the attached reference image's architectural flow, room connectivity, and style. 
+    THEN, GENERATE a new blueprint that adapts that specific style and flow to the strict dimensions provided (${houseDims}).
+    The output must preserve the essence of the input image but resize it to fit the lot.`;
+    
     parts.push({
       inlineData: {
         mimeType: 'image/jpeg', // Assuming converted to JPEG/PNG in frontend

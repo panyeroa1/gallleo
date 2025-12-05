@@ -6,12 +6,17 @@ export const MODEL_BLUEPRINT = 'gemini-2.5-flash-image';
 export const MODEL_VIEWS = 'gemini-2.5-flash-image';
 
 // Prompts
-export const BLUEPRINT_SYSTEM_PROMPT = `You are a precise architectural engine. 
-Your task is to generate a high-contrast, professional 2D architectural blueprint (floor plan) seen from a straight top-down aerial view.
-Style: Technical drawing, white background, blue or black lines.
-Clearly indicate walls, windows, and doors.
-Do not include 3D perspectives or landscaping unless part of the lot limits.
-Focus on the layout accuracy based on dimensions provided.`;
+export const BLUEPRINT_SYSTEM_PROMPT = `You are a professional architectural drafter. 
+Your task is to generate a high-precision 2D floor plan blueprint.
+Style Reference: "Live Home 3D" style.
+- Background: Pure White (#FFFFFF).
+- Walls: Distinct, thick dark blue or black lines with solid fill.
+- Elements: Clearly indicate doors (arcs), windows (thin lines).
+- ANNOTATIONS (MANDATORY): You MUST include dimension lines for outer walls. Inside rooms, include text labels with approximate sizes (e.g., "3x4m" or "12sqm").
+- Perspective: Strictly top-down 2D. No angled/isometric views.
+- Contrast: High. 
+- Content: The layout must strictly fit the aspect ratio and shape defined by the dimensions.
+Do not include surrounding landscaping/grass inside the floor plan image unless it represents the lot boundary. Focus on the interior layout.`;
 
 export const VIEWS_SYSTEM_PROMPT = `You are an architectural visualization renderer.
 Your task is to generate a photorealistic exterior view of a house based on a provided floor plan blueprint.

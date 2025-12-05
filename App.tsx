@@ -53,6 +53,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleEdit = () => {
+    // Go back to form but keep project data
+    setStep(AppStep.PROJECT_DETAILS);
+    // Project state remains populated, so ProjectForm will pick it up via initialData
+  };
+
   const handleReset = () => {
     setStep(AppStep.PROJECT_DETAILS);
     setProject(null);
@@ -102,10 +108,16 @@ const App: React.FC = () => {
         {step === AppStep.PROJECT_DETAILS && (
           <div className="animate-fade-in-up">
             <div className="text-center mb-10 max-w-2xl mx-auto">
-              <h2 className="text-3xl font-bold mb-3 text-slate-900">Start New Project</h2>
+              <h2 className="text-3xl font-bold mb-3 text-slate-900">
+                {project ? 'Edit Project Parameters' : 'Start New Project'}
+              </h2>
               <p className="text-slate-600">Define dimensional constraints and style parameters. The system will generate a structural blueprint followed by photorealistic renderings.</p>
             </div>
-            <ProjectForm onSubmit={handleProjectSubmit} isLoading={isLoading} />
+            <ProjectForm 
+              onSubmit={handleProjectSubmit} 
+              isLoading={isLoading} 
+              initialData={project} 
+            />
           </div>
         )}
 
@@ -131,7 +143,8 @@ const App: React.FC = () => {
               project={project} 
               blueprint={blueprint} 
               onGenerateViews={handleGenerateViews} 
-              onRetake={handleReset} 
+              onRetake={handleReset}
+              onEdit={handleEdit}
             />
           </div>
         )}
