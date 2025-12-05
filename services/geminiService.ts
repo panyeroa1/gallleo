@@ -9,11 +9,8 @@ const extractBase64 = (dataUrl: string): string => {
 
 // Initialize Client
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please ensure process.env.API_KEY is set.");
-  }
-  return new GoogleGenAI({ apiKey });
+  // Use the standardized Environment Variable directly as per strict guidelines
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 /**

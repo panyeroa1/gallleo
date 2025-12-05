@@ -1,5 +1,13 @@
 export const APP_NAME = "EBURON ARCHITECT";
-export const API_KEY_ENV = process.env.API_KEY;
+
+// Environment Variable Handling for Vite compatibility
+// We rely on process.env which is polyfilled in vite.config.ts
+// API Key is accessed directly via process.env.API_KEY in services to comply with strict guidelines.
+
+// Supabase Configuration
+// Defaults provided by Eburon Authority
+export const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "https://mkmyfdqrejabgnymfmbb.supabase.co";
+export const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rbXlmZHFyZWphYmdueW1mbWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0MzMxMzYsImV4cCI6MjA4MDAwOTEzNn0.x_1VnQ-HWWPwNe9jjafhD_uoH2dyCyjO2RaKOQhYoJw";
 
 // Models
 export const MODEL_BLUEPRINT = 'gemini-2.5-flash-image'; 

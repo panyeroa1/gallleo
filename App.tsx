@@ -5,6 +5,7 @@ import BlueprintResult from './components/BlueprintResult';
 import ViewsGallery from './components/ViewsGallery';
 import ArcGalileoOrb from './components/ArcGalileoOrb';
 import { generateBlueprint, generateFiveViews } from './services/geminiService';
+import { saveProjectToSupabase } from './services/supabaseService';
 import { APP_NAME } from './constants';
 
 const App: React.FC = () => {
@@ -51,6 +52,10 @@ const App: React.FC = () => {
       const result = await generateBlueprint(data);
       setBlueprint(result);
       setStep(AppStep.BLUEPRINT_RESULT);
+      
+      // Auto-save to Supabase
+      saveProjectToSupabase(data, result, null);
+      
     } catch (error) {
       alert(`Error generating blueprint: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -85,6 +90,10 @@ const App: React.FC = () => {
       });
       setViews(result);
       setStep(AppStep.VIEWS_GENERATION);
+      
+      // Auto-save to Supabase
+      saveProjectToSupabase(project, blueprint, result);
+
     } catch (error) {
        alert(`Error generating views: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
