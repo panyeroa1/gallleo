@@ -30,8 +30,8 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   const displaySetbackBack = Math.max(0, rawSetbackBack);
   
   // Validation Flags
-  const isRightInvalid = rawSetbackRight < 0;
-  const isBackInvalid = rawSetbackBack < 0;
+  const isRightInvalid = rawSetbackRight < 0; // Width Issue
+  const isBackInvalid = rawSetbackBack < 0;   // Depth Issue
 
   const [rooms, setRooms] = useState<number>(3);
   const [toilets, setToilets] = useState<number>(2);
@@ -110,12 +110,10 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   const validate = (): boolean => {
     const errs: string[] = [];
     if (lotW <= 0 || lotD <= 0 || houseW <= 0 || houseD <= 0) errs.push("All dimensions must be positive.");
-    if (houseW > lotW) errs.push("House width cannot exceed Lot width.");
-    if (houseD > lotD) errs.push("House depth cannot exceed Lot depth.");
     
     // Strict Setback Validation
-    if (isRightInvalid) errs.push(`House width + Left setback (${houseW + setbackLeft}m) exceeds Lot Width (${lotW}m).`);
-    if (isBackInvalid) errs.push(`House depth + Front setback (${houseD + setbackFront}m) exceeds Lot Depth (${lotD}m).`);
+    if (isRightInvalid) errs.push(`Boundary Error: House Width + Left Margin exceeds Lot Width.`);
+    if (isBackInvalid) errs.push(`Boundary Error: House Depth + Front Margin exceeds Lot Depth.`);
     
     if (inputType === 'text_prompt' && !promptText.trim()) errs.push("Text prompt is required.");
     if (inputType === 'image_upload' && !imageBase64) errs.push("Reference image is required.");
@@ -153,8 +151,6 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
 
   // Visualization Coordinates
   // SVG 0,0 is Top-Left. 
-  // Let's assume Top of SVG is Back of Lot. Bottom of SVG is Front of Lot (Road).
-  // X = Left to Right. Y = Back to Front.
   const padding = 2; // meters visual padding
   const svgWidth = lotW + (padding * 2);
   const svgHeight = lotD + (padding * 2) + 4; // Extra space for "Road" at bottom
@@ -163,12 +159,70 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
   const lotY = padding;
   
   // House position
-  // x = padding + setbackLeft
-  // y = padding + (LotDepth - SetbackFront - HouseDepth) -> If Front is bottom
   const houseXPos = padding + setbackLeft;
   const houseYPos = padding + (lotD - setbackFront - houseD);
 
   const roofTypes: RoofType[] = ['Flat', 'Gabled', 'Hip', 'Shed'];
+
+  const inputErrorClass = "border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-200";
+  const inputNormalClass = "border-slate-300 bg-white focus:border-blue-500";
+
+  // --- PROCEDURAL SCHEMATIC GENERATION ---
+  // Simple algorithm to subdivide the house rectangle into "rooms" for the preview
+  const generateSchematicRooms = useMemo(() => {
+    // Only generate if valid
+    if (isRightInvalid || isBackInvalid) return [];
+
+    const rects: { x: number, y: number, w: number, h: number, label: string }[] = [];
+    const totalUnits = rooms + toilets + (hasKitchen ? 1 : 0) + (hasLiving ? 1 : 0);
+    
+    // Start with full house
+    let currentX = houseXPos;
+    let currentY = houseYPos;
+    let availableW = houseW;
+    let availableH = houseD;
+    
+    const itemList = [];
+    if (hasLiving) itemList.push('LIVING');
+    if (hasKitchen) itemList.push('KITCHEN');
+    for (let i=0; i<rooms; i++) itemList.push(`BED ${i+1}`);
+    for (let i=0; i<toilets; i++) itemList.push(`BATH ${i+1}`);
+
+    // Simple Binary Space Partitioning-ish approach
+    // We alternate splitting vertically and horizontally
+    
+    const splitArea = (x: number, y: number, w: number, h: number, items: string[], depth: number) => {
+        if (items.length === 0) return;
+        if (items.length === 1) {
+            rects.push({ x, y, w, h, label: items[0] });
+            return;
+        }
+
+        const half = Math.ceil(items.length / 2);
+        const firstBatch = items.slice(0, half);
+        const secondBatch = items.slice(half);
+
+        // Determine split direction based on aspect ratio
+        if (w > h) {
+             // Split Vertically (Left/Right)
+             const splitRatio = firstBatch.length / items.length;
+             const w1 = w * splitRatio;
+             splitArea(x, y, w1, h, firstBatch, depth + 1);
+             splitArea(x + w1, y, w - w1, h, secondBatch, depth + 1);
+        } else {
+             // Split Horizontally (Top/Bottom)
+             const splitRatio = firstBatch.length / items.length;
+             const h1 = h * splitRatio;
+             splitArea(x, y, w, h1, firstBatch, depth + 1);
+             splitArea(x, y + h1, w, h - h1, secondBatch, depth + 1);
+        }
+    };
+
+    splitArea(currentX, currentY, availableW, availableH, itemList, 0);
+
+    return rects;
+  }, [houseW, houseD, houseXPos, houseYPos, rooms, toilets, hasKitchen, hasLiving, isRightInvalid, isBackInvalid]);
+
 
   return (
     <div className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-lg border border-slate-200">
@@ -184,8 +238,11 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
         <div className="lg:col-span-4 space-y-6">
           
           {/* Lot Definition */}
-          <div className="bg-slate-50 p-5 rounded border border-slate-200">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">1. Lot Boundary (Meters)</h3>
+          <div className={`p-5 rounded border transition-colors ${isRightInvalid || isBackInvalid ? 'border-red-200 bg-red-50/50' : 'border-slate-200 bg-slate-50'}`}>
+            <div className="flex justify-between items-center mb-3">
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isRightInvalid || isBackInvalid ? 'text-red-600' : 'text-slate-500'}`}>1. Lot Boundary (Meters)</h3>
+                {(isRightInvalid || isBackInvalid) && <span className="text-red-600 text-xs font-bold">⚠️ OVERFLOW</span>}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Lot X (Width)</label>
@@ -193,7 +250,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={lotW} 
                   onChange={e => setLotW(Math.max(1, Number(e.target.value)))} 
-                  className="w-full p-2 border border-slate-300 rounded font-mono text-slate-900 bg-white" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isRightInvalid ? inputErrorClass : inputNormalClass}`} 
                 />
               </div>
               <div>
@@ -202,15 +259,17 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={lotD} 
                   onChange={e => setLotD(Math.max(1, Number(e.target.value)))} 
-                  className="w-full p-2 border border-slate-300 rounded font-mono text-slate-900 bg-white" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isBackInvalid ? inputErrorClass : inputNormalClass}`} 
                 />
               </div>
             </div>
           </div>
 
           {/* House Definition */}
-          <div className="bg-blue-50 p-5 rounded border border-blue-200">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-3">2. House Footprint (Meters)</h3>
+          <div className={`p-5 rounded border transition-colors ${isRightInvalid || isBackInvalid ? 'border-red-200 bg-red-50/50' : 'border-blue-200 bg-blue-50'}`}>
+             <div className="flex justify-between items-center mb-3">
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isRightInvalid || isBackInvalid ? 'text-red-600' : 'text-blue-600'}`}>2. House Footprint (Meters)</h3>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase text-blue-400 mb-1">House X (Width)</label>
@@ -218,7 +277,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={houseW} 
                   onChange={e => setHouseW(Math.max(1, Number(e.target.value)))} 
-                  className="w-full p-2 border border-blue-300 rounded font-mono text-slate-900 bg-white focus:border-blue-500" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isRightInvalid ? inputErrorClass : 'border-blue-300 bg-white focus:border-blue-500'}`} 
                 />
               </div>
               <div>
@@ -227,7 +286,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={houseD} 
                   onChange={e => setHouseD(Math.max(1, Number(e.target.value)))} 
-                  className="w-full p-2 border border-blue-300 rounded font-mono text-slate-900 bg-white focus:border-blue-500" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isBackInvalid ? inputErrorClass : 'border-blue-300 bg-white focus:border-blue-500'}`} 
                 />
               </div>
             </div>
@@ -243,7 +302,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={setbackLeft} 
                   onChange={e => setSetbackLeft(Math.max(0, Number(e.target.value)))} 
-                  className="w-full p-2 border border-slate-300 rounded font-mono text-slate-900 bg-white" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isRightInvalid ? inputErrorClass : inputNormalClass}`} 
                 />
               </div>
               <div>
@@ -252,7 +311,7 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                   type="number" 
                   value={setbackFront} 
                   onChange={e => setSetbackFront(Math.max(0, Number(e.target.value)))} 
-                  className="w-full p-2 border border-slate-300 rounded font-mono text-slate-900 bg-white" 
+                  className={`w-full p-2 border rounded font-mono text-slate-900 ${isBackInvalid ? inputErrorClass : inputNormalClass}`} 
                 />
               </div>
             </div>
@@ -274,74 +333,105 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
         </div>
 
         {/* Right Column: Visualization */}
-        <div className={`lg:col-span-8 bg-slate-800 rounded-lg border ${isRightInvalid || isBackInvalid ? 'border-red-500 ring-2 ring-red-500/20' : 'border-slate-700'} p-6 flex flex-col items-center justify-center relative overflow-hidden shadow-inner transition-all`}>
-           <h3 className="absolute top-4 left-4 text-xs font-bold uppercase text-slate-400">Site Plan Preview</h3>
+        <div className={`lg:col-span-8 rounded-lg border-2 overflow-hidden shadow-2xl relative transition-all ${isRightInvalid || isBackInvalid ? 'border-red-500' : 'border-white'} bg-[#1e40af]`}>
            
+           {/* Header Tag */}
+           <div className="absolute top-0 left-0 bg-white/10 backdrop-blur text-white text-[10px] font-mono px-2 py-1 z-10 border-b border-r border-white/20">
+               SCHEMATIC FLOORPLAN PREVIEW // SCALE 1:100
+           </div>
+
            {/* SVG Plotter */}
-           <div className="w-full h-[500px] flex items-center justify-center relative">
+           <div className="w-full h-[500px] flex items-center justify-center relative bg-[#1e40af]">
              <svg 
                width="100%" 
                height="100%" 
                viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
                preserveAspectRatio="xMidYMid meet"
-               className="bg-transparent"
+               className="bg-[#1e40af]"
              >
-                {/* Defs for patterns */}
+                {/* Defs for Blueprint Patterns */}
                 <defs>
-                   <pattern id="smallGrid" width="1" height="1" patternUnits="userSpaceOnUse">
-                     <path d="M 1 0 L 0 0 0 1" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.05"/>
-                   </pattern>
+                   {/* Major Grid */}
                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                     <rect width="100" height="100" fill="url(#smallGrid)"/>
-                     <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.1"/>
+                     <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.1"/>
                    </pattern>
-                   <marker id="arrow" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
-                      <path d="M0,0 L0,4 L4,2 z" fill="#f59e0b" />
+                   {/* Minor Grid */}
+                   <pattern id="smallGrid" width="1" height="1" patternUnits="userSpaceOnUse">
+                     <path d="M 1 0 L 0 0 0 1" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.05"/>
+                   </pattern>
+                   {/* Dimension Arrow */}
+                   <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                      <path d="M0,0 L0,6 L6,3 z" fill="white" />
                    </marker>
+                   {/* Hatching for walls */}
+                   <pattern id="hatch" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                        <line x1="0" y1="0" x2="0" y2="1" stroke="white" strokeWidth="0.1" />
+                    </pattern>
                 </defs>
+
+                {/* Background Grids */}
+                <rect x="0" y="0" width={svgWidth} height={svgHeight} fill="url(#smallGrid)" />
+                <rect x="0" y="0" width={svgWidth} height={svgHeight} fill="url(#grid)" />
 
                 {/* Plot Group */}
                 <g>
-                   {/* Road at Bottom */}
-                   <rect 
-                    x={0} 
-                    y={lotD + (padding * 2)} 
-                    width={svgWidth} 
-                    height={4} 
-                    fill="#334155"
-                   />
-                   <text x={svgWidth/2} y={lotD + (padding * 2) + 2.5} fill="#94a3b8" fontSize="1.5" textAnchor="middle" letterSpacing="0.2em" className="font-mono font-bold uppercase">Main Road / Access</text>
-
-                   {/* Lot Boundary */}
+                   {/* Lot Boundary (Dashed Line) */}
                    <rect 
                      x={lotX} 
                      y={lotY} 
                      width={lotW} 
                      height={lotD} 
-                     fill="#1e293b" 
-                     stroke="#94a3b8" 
-                     strokeWidth="0.3"
-                     strokeDasharray="1,0.5"
+                     fill="none" 
+                     stroke="white" 
+                     strokeWidth="0.2"
+                     strokeDasharray="1,1"
+                     opacity="0.5"
                    />
                    
-                   {/* Lot Dimension Labels */}
-                   <text x={lotX + lotW/2} y={lotY - 0.5} fill="#94a3b8" fontSize="1" textAnchor="middle" className="font-mono">LOT WIDTH {lotW}m</text>
-                   <text x={lotX - 0.5} y={lotY + lotD/2} fill="#94a3b8" fontSize="1" textAnchor="middle" transform={`rotate(-90, ${lotX - 0.5}, ${lotY + lotD/2})`} className="font-mono">LOT DEPTH {lotD}m</text>
+                   {/* Lot Dimensions */}
+                   <text x={lotX + lotW/2} y={lotY - 1} fill="white" fontSize="0.8" textAnchor="middle" className="font-mono opacity-60">{lotW}m</text>
+                   <text x={lotX - 1} y={lotY + lotD/2} fill="white" fontSize="0.8" textAnchor="middle" transform={`rotate(-90, ${lotX - 1}, ${lotY + lotD/2})`} className="font-mono opacity-60">{lotD}m</text>
 
-                   {/* House Footprint */}
+                   {/* House Footprint - Outer Walls */}
                    <rect 
                      x={houseXPos} 
                      y={houseYPos} 
                      width={houseW} 
                      height={houseD} 
-                     fill={existingBlueprint ? "white" : (isRightInvalid || isBackInvalid ? '#ef4444' : '#3b82f6')}
+                     fill="none"
                      stroke="white" 
-                     strokeWidth="0.4"
+                     strokeWidth="0.6" // Thick Blueprint Lines
                      className="drop-shadow-lg"
-                     opacity={isRightInvalid || isBackInvalid ? 0.5 : 1}
+                     opacity={isRightInvalid || isBackInvalid ? 0.3 : 1}
                    />
 
-                   {/* Generated Blueprint Overlay */}
+                   {/* Procedural Schematic Rooms */}
+                   {!existingBlueprint && !isRightInvalid && !isBackInvalid && generateSchematicRooms.map((room, idx) => (
+                       <g key={idx}>
+                           <rect 
+                                x={room.x} 
+                                y={room.y} 
+                                width={room.w} 
+                                height={room.h} 
+                                fill="rgba(255,255,255,0.05)"
+                                stroke="white"
+                                strokeWidth="0.2"
+                           />
+                           <text 
+                                x={room.x + room.w/2} 
+                                y={room.y + room.h/2} 
+                                fill="white" 
+                                fontSize={Math.min(room.w, room.h) * 0.2} 
+                                textAnchor="middle" 
+                                dominantBaseline="middle"
+                                className="font-mono font-bold"
+                            >
+                                {room.label}
+                            </text>
+                       </g>
+                   ))}
+
+                   {/* Generated Blueprint Overlay (If exists) */}
                    {existingBlueprint && !isRightInvalid && !isBackInvalid && (
                      <image 
                         href={existingBlueprint} 
@@ -354,49 +444,44 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
                      />
                    )}
                    
-                   {/* House Center Label - only show if no blueprint, or if blueprint is opaque/hard to read */}
-                   {!existingBlueprint && (
-                     <>
-                        <text x={houseXPos + houseW/2} y={houseYPos + houseD/2} fill="white" fontSize="1.2" textAnchor="middle" className="font-bold font-mono">HOUSE</text>
-                        <text x={houseXPos + houseW/2} y={houseYPos + houseD/2 + 1.5} fill="rgba(255,255,255,0.8)" fontSize="0.8" textAnchor="middle" className="font-mono">{houseW}m x {houseD}m</text>
-                     </>
-                   )}
+                   {/* House Dimensions with Arrows */}
+                   {/* Width Dimension */}
+                   <line x1={houseXPos} y1={houseYPos - 1.5} x2={houseXPos + houseW} y2={houseYPos - 1.5} stroke="white" strokeWidth="0.15" markerEnd="url(#arrow)" markerStart="url(#arrow-start)" />
+                   <line x1={houseXPos} y1={houseYPos} x2={houseXPos} y2={houseYPos - 2} stroke="white" strokeWidth="0.05" opacity="0.5" />
+                   <line x1={houseXPos + houseW} y1={houseYPos} x2={houseXPos + houseW} y2={houseYPos - 2} stroke="white" strokeWidth="0.05" opacity="0.5" />
+                   <text x={houseXPos + houseW/2} y={houseYPos - 2} fill="white" fontSize="0.8" textAnchor="middle" className="font-mono font-bold">{houseW}m</text>
 
-                   {/* Setback Arrows & Labels */}
-                   
-                   {/* Left Setback */}
-                   <line x1={lotX} y1={houseYPos + houseD/2} x2={houseXPos} y2={houseYPos + houseD/2} stroke="#f59e0b" strokeWidth="0.15" />
-                   <text x={lotX + setbackLeft/2} y={houseYPos + houseD/2 - 0.5} fill="#f59e0b" fontSize="0.8" textAnchor="middle">{setbackLeft}m</text>
-
-                   {/* Right Setback */}
-                   <line x1={houseXPos + houseW} y1={houseYPos + houseD/2} x2={lotX + lotW} y2={houseYPos + houseD/2} stroke="#f59e0b" strokeWidth="0.15" />
-                   <text x={houseXPos + houseW + displaySetbackRight/2} y={houseYPos + houseD/2 - 0.5} fill={isRightInvalid ? '#ef4444' : '#f59e0b'} fontSize="0.8" textAnchor="middle">{rawSetbackRight.toFixed(1)}m</text>
-
-                   {/* Front Setback (Bottom) */}
-                   <line x1={houseXPos + houseW/2} y1={houseYPos + houseD} x2={houseXPos + houseW/2} y2={lotY + lotD} stroke="#f59e0b" strokeWidth="0.15" />
-                   <text x={houseXPos + houseW/2 + 0.5} y={houseYPos + houseD + setbackFront/2} fill="#f59e0b" fontSize="0.8" dominantBaseline="middle">{setbackFront}m (Front)</text>
-
-                   {/* Back Setback (Top) */}
-                   <line x1={houseXPos + houseW/2} y1={lotY} x2={houseXPos + houseW/2} y2={houseYPos} stroke="#f59e0b" strokeWidth="0.15" />
-                   <text x={houseXPos + houseW/2 + 0.5} y={lotY + displaySetbackBack/2} fill={isBackInvalid ? '#ef4444' : '#f59e0b'} fontSize="0.8" dominantBaseline="middle">{rawSetbackBack.toFixed(1)}m (Back)</text>
+                    {/* Depth Dimension */}
+                   <line x1={houseXPos + houseW + 1.5} y1={houseYPos} x2={houseXPos + houseW + 1.5} y2={houseYPos + houseD} stroke="white" strokeWidth="0.15" />
+                   <line x1={houseXPos + houseW} y1={houseYPos} x2={houseXPos + houseW + 2} y2={houseYPos} stroke="white" strokeWidth="0.05" opacity="0.5" />
+                   <line x1={houseXPos + houseW} y1={houseYPos + houseD} x2={houseXPos + houseW + 2} y2={houseYPos + houseD} stroke="white" strokeWidth="0.05" opacity="0.5" />
+                   <text x={houseXPos + houseW + 2.5} y={houseYPos + houseD/2} fill="white" fontSize="0.8" textAnchor="middle" transform={`rotate(90, ${houseXPos + houseW + 2.5}, ${houseYPos + houseD/2})`} className="font-mono font-bold">{houseD}m</text>
 
                 </g>
              </svg>
              
+             {/* Error Overlay */}
              {(isRightInvalid || isBackInvalid) && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-lg">
-                    <div className="bg-red-600 text-white p-4 rounded shadow-xl max-w-sm text-center">
-                        <h4 className="font-bold text-lg mb-1">BOUNDARY ERROR</h4>
-                        <p className="text-sm">The house dimensions + setbacks exceed the lot boundaries.</p>
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-red-600 text-white p-6 shadow-2xl max-w-sm text-center border-4 border-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-white animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <h4 className="font-mono font-bold text-xl mb-1 tracking-widest">BOUNDARY ERROR</h4>
+                        <p className="font-mono text-sm">STRUCTURE EXCEEDS LOT LIMITS</p>
                     </div>
                  </div>
              )}
            </div>
            
-           <div className="mt-4 flex space-x-6 text-xs font-mono text-slate-400">
-              <span className="flex items-center"><div className="w-3 h-3 border border-slate-500 bg-slate-900 mr-2"></div> Lot</span>
-              <span className="flex items-center"><div className={`w-3 h-3 ${existingBlueprint ? 'bg-white' : 'bg-blue-500'} border border-white mr-2`}></div> House</span>
-              <span className="flex items-center"><div className="w-3 h-0.5 bg-yellow-500 mr-2"></div> Setbacks</span>
+           <div className="bg-[#172554] p-2 flex justify-between items-center text-[10px] font-mono text-blue-200 border-t border-white/10">
+              <div className="flex space-x-4">
+                  <span className="flex items-center"><div className="w-3 h-3 border border-white opacity-50 mr-2 border-dashed"></div> LOT BOUNDARY</span>
+                  <span className="flex items-center"><div className="w-3 h-3 border-2 border-white mr-2"></div> HOUSE FOOTPRINT</span>
+              </div>
+              <div>
+                  AUTO-GENERATED SCHEMATIC
+              </div>
            </div>
         </div>
       </div>
@@ -479,8 +564,9 @@ const ProjectForm: React.FC<Props> = ({ onSubmit, onDataChange, isLoading, initi
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="mb-6 bg-red-50 text-red-600 p-4 rounded text-sm">
-          {errors.map((e, i) => <div key={i}>• {e}</div>)}
+        <div className="mb-6 bg-red-50 text-red-600 p-4 rounded text-sm border border-red-200">
+          <h4 className="font-bold mb-1 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> Validation Failed</h4>
+          {errors.map((e, i) => <div key={i} className="ml-5">• {e}</div>)}
         </div>
       )}
 
