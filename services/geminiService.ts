@@ -77,7 +77,7 @@ export const generateBlueprint = async (project: ProjectData, onStatusUpdate?: (
   console.log("Enhanced Prompt:", enhancedDescription);
 
   // STEP 2: PREPARE IMAGE GENERATION
-  if (onStatusUpdate) onStatusUpdate("Rendering 3D Isometric Cutaway...");
+  if (onStatusUpdate) onStatusUpdate("Rendering 2D Textured Floor Plan...");
 
   const houseDims = `${project.houseDimensions.widthMeters}m x ${project.houseDimensions.depthMeters}m`;
   const lotDims = `${project.lotDimensions.widthMeters}m x ${project.lotDimensions.depthMeters}m`;
@@ -102,10 +102,13 @@ export const generateBlueprint = async (project: ProjectData, onStatusUpdate?: (
     roomLabels.push(`Bath ${i}`);
   }
 
-  let userPrompt = `Generate a High-Fidelity 3D Isometric Cutaway Floor Plan.
+  let userPrompt = `Generate a Professional 2D Textured Floor Plan (Top-Down).
   
   ENHANCED DESIGN BRIEF:
   ${enhancedDescription}
+  
+  ARCHITECTURAL CONFIGURATION:
+  - Roof Style: ${project.roofType} (Influences layout style, e.g., Flat = Modern, Gabled = Traditional)
   
   DIMENSIONS:
   - Lot: ${lotDims}
@@ -113,10 +116,12 @@ export const generateBlueprint = async (project: ProjectData, onStatusUpdate?: (
   - Setbacks: ${setbacksInfo}
   
   REQUIRED ELEMENTS:
-  - 3D Extruded Walls (Cut height approx 1.2m, Black Fill).
-  - Realistic Flooring (Wood/Tile).
+  - 2D Top-Down View (0 degrees).
+  - Clear Wall Cut Lines (Black).
+  - Realistic Flooring Textures.
   - Fully Furnished: ${roomLabels.join(', ')}.
-  - Ambient Occlusion Shadows.
+  - **TEXT ANNOTATIONS**: You MUST include clear, legible text labels for rooms: ${roomLabels.join(', ')}.
+  - **DIMENSION MARKERS**: Include approximate internal dimensions (e.g. "3.5x4.2m") for major rooms.
   - White Background.
   `;
 
@@ -198,15 +203,24 @@ export const generateFiveViews = async (
 
   const baseInstruction = `
     Reference the attached 3D floor plan accurately.
-    House Size: ${project.houseDimensions.widthMeters}m width x ${project.houseDimensions.depthMeters}m depth.
-    Roof Style: ${project.roofType}.
-    Design Style: ${styleContext}
-    ${extraInstructions ? `Additional Instructions: ${extraInstructions}` : ''}
+    
+    ARCHITECTURAL DNA:
+    - House Size: ${project.houseDimensions.widthMeters}m width x ${project.houseDimensions.depthMeters}m depth.
+    - Roof Architecture: "${project.roofType}" (Strictly adhere to the Dynamic Style Guide for this roof type).
+    - Vibe/Style: ${styleContext}
+    ${extraInstructions ? `User Notes: ${extraInstructions}` : ''}
   `;
 
   // Helper for single view generation
   const generateSingleView = async (angle: string): Promise<string> => {
-    const prompt = `Generate a photorealistic ${angle} view of this house. ${baseInstruction}`;
+    // Explicitly requesting the detailed landscaping elements in the user prompt as well
+    const prompt = `Generate a photorealistic ${angle} view of this house. 
+    MANDATORY DETAILS:
+    1. Apply the Material Palette defined in the System Prompt for a "${project.roofType}" roof.
+    2. Landscaping: Concrete pavers with pebbles, ornamental grasses, and specific trees (e.g. Olive/Birch).
+    3. Lighting: Warm 3000K exterior lighting.
+    
+    ${baseInstruction}`;
     
     const response = await ai.models.generateContent({
       model: MODEL_VIEWS,
